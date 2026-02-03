@@ -1,0 +1,243 @@
+// API Types and Interfaces
+export interface ApiResponse<T> {
+  data: T
+  message?: string
+  success: boolean
+  pagination?: {
+    page: number
+    limit: number
+    total: number
+    totalPages: number
+  }
+}
+
+export interface ApiError {
+  message: string
+  statusCode: number
+  error?: string
+  details?: any[]
+}
+
+export interface BaseEntity {
+  id: string
+  created_at: string
+  updated_at: string
+  deleted_at?: string
+}
+
+// User Types
+export interface User extends BaseEntity {
+  email: string
+  username: string
+  first_name: string
+  last_name: string
+  role: 'ADMIN' | 'HOUSEHOLD_ADMIN' | 'HOUSEHOLD_MEMBER' | 'HOUSEHOLD_VIEWER'
+  is_active: boolean
+  email_verified: boolean
+  household_id: string
+  last_login?: string
+}
+
+// Household Types
+export interface Household extends BaseEntity {
+  name: string
+  description?: string
+  address?: string
+  city?: string
+  state?: string
+  zip_code?: string
+  country: string
+  default_currency: string
+  member_count: number
+  total_income: number
+  total_expenses: number
+  status: 'ACTIVE' | 'INACTIVE' | 'SUSPENDED'
+}
+
+// Account Types
+export interface Account extends BaseEntity {
+  household_id: string
+  name: string
+  account_type: 'CHECKING' | 'SAVINGS' | 'CREDIT' | 'INVESTMENT' | 'LOAN'
+  bank_name?: string
+  account_number_masked?: string
+  balance: number
+  currency: string
+  is_active: boolean
+  last_sync?: string
+  provider?: string
+}
+
+// Transaction Types
+export interface Transaction extends BaseEntity {
+  household_id: string
+  account_id: string
+  category_id?: string
+  amount: number
+  currency: string
+  description: string
+  transaction_date: string
+  transaction_type: 'INCOME' | 'EXPENSE' | 'TRANSFER'
+  status: 'PENDING' | 'COMPLETED' | 'CANCELLED'
+  merchant?: string
+  location?: string
+  tags?: string[]
+}
+
+// Category Types
+export interface Category extends BaseEntity {
+  household_id: string
+  name: string
+  description?: string
+  color?: string
+  icon?: string
+  parent_id?: string
+  is_system: boolean
+  transaction_count: number
+  total_amount: number
+}
+
+// Goal Types
+export interface Goal extends BaseEntity {
+  household_id: string
+  name: string
+  description?: string
+  target_amount: number
+  current_amount: number
+  target_date: string
+  priority: 'LOW' | 'MEDIUM' | 'HIGH'
+  status: 'ACTIVE' | 'COMPLETED' | 'PAUSED'
+  category?: string
+}
+
+// Loan Types
+export interface Loan extends BaseEntity {
+  household_id: string
+  provider_name: string
+  loan_type: 'BNPL' | 'PERSONAL' | 'MORTGAGE' | 'AUTO' | 'STUDENT' | 'CREDIT_CARD'
+  principal_amount: number
+  current_balance: number
+  interest_rate: number
+  minimum_payment: number
+  due_date: string
+  status: 'ACTIVE' | 'PAID_OFF' | 'DEFAULTED'
+}
+
+// Onboarding Types
+export interface OnboardingStatus {
+  user_id: string
+  step: string
+  completed: boolean
+  data?: Record<string, any>
+}
+
+// Combined onboarding data interface
+export interface OnboardingData {
+  user: {
+    firstName: string;
+    lastName: string;
+    email: string;
+    phoneNumber?: string;
+  };
+  household: {
+    name: string;
+    type: 'family' | 'couple' | 'single' | 'roommates';
+    currency: string;
+    timezone: string;
+    address?: string;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+    monthlyIncome?: number;
+    monthlyExpenses?: number;
+    financialGoals?: string[];
+  };
+  members?: Array<{
+    firstName: string;
+    lastName: string;
+    email: string;
+    role: 'admin' | 'member' | 'viewer';
+  }>;
+  roles?: Array<{
+    userId: string;
+    role: string;
+  }>;
+}
+
+export interface OnboardingStartRequest {
+  household: {
+    name: string
+    address?: string
+    city?: string
+    state?: string
+    zip_code?: string
+    country: string
+    default_currency: string
+  }
+  user: {
+    email: string
+    first_name: string
+    last_name: string
+    username?: string
+  }
+}
+
+export interface OnboardingMemberRequest {
+  email: string
+  first_name: string
+  last_name: string
+  role: 'HOUSEHOLD_ADMIN' | 'HOUSEHOLD_MEMBER' | 'HOUSEHOLD_VIEWER'
+}
+
+// API Request Types
+export interface CreateAccountRequest {
+  name: string
+  account_type: Account['account_type']
+  bank_name?: string
+  initial_balance: number
+  currency: string
+}
+
+export interface CreateTransactionRequest {
+  account_id: string
+  category_id?: string
+  amount: number
+  currency: string
+  description: string
+  transaction_date: string
+  transaction_type: Transaction['transaction_type']
+  merchant?: string
+  location?: string
+  tags?: string[]
+}
+
+export interface CreateGoalRequest {
+  name: string
+  description?: string
+  target_amount: number
+  target_date: string
+  priority: Goal['priority']
+  category?: string
+}
+
+// Pagination and Filtering
+export interface PaginationParams {
+  page?: number
+  limit?: number
+  sortBy?: string
+  sortOrder?: 'ASC' | 'DESC'
+}
+
+export interface FilterParams {
+  startDate?: string
+  endDate?: string
+  category?: string
+  accountId?: string
+  minAmount?: number
+  maxAmount?: number
+  status?: string
+  search?: string
+}
+
+export type ListParams = PaginationParams & FilterParams
