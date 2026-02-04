@@ -100,8 +100,9 @@ async function apiRequest<T>(
       throw new Error(errorData.message || `API request failed: ${response.status}`)
     }
 
-    const data: ApiResponse<T> = await response.json()
-    return data
+    // NestJS returns data directly, not wrapped in ApiResponse
+    const data: T = await response.json()
+    return { data, success: true } as ApiResponse<T>
   } catch (error) {
     clearTimeout(timeoutId)
     

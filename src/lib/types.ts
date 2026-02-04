@@ -60,12 +60,14 @@ export interface Account extends BaseEntity {
   name: string
   account_type: 'checking' | 'savings' | 'credit_card' | 'investment' | 'cash' | 'loan' | 'business' | 'other'
   bank_name?: string
-  account_number_masked?: string
-  balance: number
+  account_number?: string
+  current_balance: number
+  available_balance?: number
   currency: string
+  status: 'active' | 'inactive' | 'closed' | 'suspended'
   is_active: boolean
-  last_sync?: string
-  provider?: string
+  last_synced_at?: string
+  external_provider?: string
 }
 
 // Transaction Types

@@ -25,7 +25,7 @@ export function LoadingSpinner({
     <div className="flex flex-col items-center justify-center gap-3">
       <div
         className={cn(
-          'animate-spin rounded-full border-indigo-600 border-t-transparent',
+          'animate-spin rounded-full border-indigo-600 dark:border-indigo-500 border-t-transparent',
           sizeClasses[size],
           className
         )}
@@ -33,14 +33,14 @@ export function LoadingSpinner({
         aria-label="Loading"
       />
       {text && (
-        <p className="text-sm text-gray-600 font-medium">{text}</p>
+        <p className="text-sm text-gray-600 dark:text-gray-400 font-medium">{text}</p>
       )}
     </div>
   );
 
   if (fullScreen) {
     return (
-      <div className="fixed inset-0 bg-white bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-50">
+      <div className="fixed inset-0 bg-white dark:bg-gray-950 bg-opacity-90 dark:bg-opacity-90 backdrop-blur-sm flex items-center justify-center z-50">
         {spinner}
       </div>
     );
@@ -51,7 +51,7 @@ export function LoadingSpinner({
 
 export function PageLoader({ text = 'Loading...' }: { text?: string }) {
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-gray-950">
       <LoadingSpinner size="lg" text={text} />
     </div>
   );

@@ -23,13 +23,12 @@ import {
   ModalHeader
 } from '@/components/ui';
 import { Form, FormSection, FormActions } from '@/components/forms/FormComponents';
+import { TransactionForm } from '@/components/forms/TransactionForm';
 import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
 import { useTransactions, useCreateTransaction, useUpdateTransaction, useDeleteTransaction, useAccounts, useCategories } from '@/lib/hooks/useApi';
 import { PageLoader } from '@/components/LoadingSpinner';
 import type { Transaction, Account, Category, CreateTransactionRequest } from '@/lib/types';
-
-// Mock data for development
 
 const TRANSACTION_TYPES = [
   { value: 'INCOME', label: 'Income' },
@@ -409,103 +408,18 @@ export default function TransactionsPage() {
         size="md"
       >
         <ModalHeader>
-          <h2 className="text-lg font-semibold">Add New Transaction</h2>
+          <h2 className="text-lg font-semibold dark:text-gray-100">Add New Transaction</h2>
         </ModalHeader>
         <ModalBody>
-          <Form onSubmit={(e) => e.preventDefault()}>
-            <FormSection>
-              <div className="space-y-4">
-                <Input
-                  label="Description"
-                  placeholder="e.g., Grocery shopping"
-                  required
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    type="number"
-                    label="Amount"
-                    placeholder="0.00"
-                    step="0.01"
-                    required
-                  />
-                  <Input
-                    type="date"
-                    label="Date"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <Select
-                    label="Type"
-                    placeholder="Select type"
-                    options={TRANSACTION_TYPES}
-                    required
-                  />
-                  <Select
-                    label="Account"
-                    placeholder="Select account"
-                    options={accounts.map(account => ({
-                      value: account.id,
-                      label: account.name
-                    }))}
-                    required
-                  />
-                </div>
-                <Select
-                  label="Category"
-                  placeholder="Select category"
-                  options={[
-                    { value: '', label: 'Uncategorized' },
-                    ...categories.map(category => ({
-                      value: category.id,
-                      label: category.name
-                    }))
-                  ]}
-                />
-                <Input
-                  label="Merchant/Payee"
-                  placeholder="e.g., Whole Foods"
-                />
-                <Input
-                  label="Location"
-                  placeholder="e.g., New York, NY"
-                />
-                <Input
-                  label="Tags"
-                  placeholder="e.g., groceries, food (comma-separated)"
-                />
-              </div>
-            </FormSection>
-          </Form>
+          <TransactionForm
+            accounts={accounts}
+            categories={categories}
+            onSubmit={handleCreateTransaction}
+            onCancel={() => setIsCreateModalOpen(false)}
+            isLoading={createTransaction.isPending}
+            mode="create"
+          />
         </ModalBody>
-        <ModalFooter>
-          <FormActions>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsCreateModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="default"
-              loading={isLoading}
-              onClick={() => handleCreateTransaction({
-                account_id: '1',
-                category_id: 'cat-1',
-                amount: 25.50,
-                currency: 'USD',
-                description: 'Sample Transaction',
-                transaction_date: new Date().toISOString().split('T')[0],
-                transaction_type: 'expense',
-                merchant: 'Sample Store',
-                location: 'Sample Location',
-                tags: ['sample']
-              })}
-            >
-              Add Transaction
-            </Button>
-          </FormActions>
-        </ModalFooter>
       </Modal>
 
       {/* Edit Transaction Modal */}

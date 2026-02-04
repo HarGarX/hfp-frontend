@@ -23,7 +23,7 @@ import {
 import { formatCurrency } from '@/lib/utils';
 
 export default function DashboardPage() {
-  // Mock data for dashboard overview
+  // Dashboard data will come from API
   const dashboardData = {
     totalBalance: 18750.50,
     monthlyIncome: 5200.00,

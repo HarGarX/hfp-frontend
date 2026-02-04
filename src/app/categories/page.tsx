@@ -23,6 +23,7 @@ import {
   ModalHeader
 } from '@/components/ui';
 import { Form, FormSection, FormActions } from '@/components/forms/FormComponents';
+import { CategoryForm } from '@/components/forms/CategoryForm';
 import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
 import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/lib/hooks/useApi';
@@ -408,95 +409,16 @@ export default function CategoriesPage() {
         size="md"
       >
         <ModalHeader>
-          <h2 className="text-lg font-semibold">Create New Category</h2>
+          <h2 className="text-lg font-semibold dark:text-gray-100">Create New Category</h2>
         </ModalHeader>
         <ModalBody>
-          <Form onSubmit={(e) => e.preventDefault()}>
-            <FormSection>
-              <div className="space-y-4">
-                <Input
-                  label="Category Name"
-                  placeholder="e.g., Entertainment"
-                  required
-                />
-                <Input
-                  label="Description"
-                  placeholder="e.g., Movies, games, and leisure activities"
-                />
-                
-                <Select
-                  label="Parent Category"
-                  placeholder="Select parent (optional for top-level category)"
-                  options={[
-                    { value: '', label: 'None (top-level category)' },
-                    ...parentCategories.map(cat => ({
-                      value: cat.id,
-                      label: cat.name
-                    }))
-                  ]}
-                />
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Icon
-                    </label>
-                    <div className="grid grid-cols-5 gap-2">
-                      {PREDEFINED_ICONS.slice(0, 10).map((icon) => (
-                        <button
-                          key={icon}
-                          type="button"
-                          className="w-10 h-10 rounded-lg border-2 border-gray-200 hover:border-blue-500 flex items-center justify-center text-lg transition-colors"
-                        >
-                          {icon}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Color
-                    </label>
-                    <div className="grid grid-cols-5 gap-2">
-                      {PREDEFINED_COLORS.slice(0, 10).map((color) => (
-                        <button
-                          key={color}
-                          type="button"
-                          className="w-10 h-10 rounded-lg border-2 border-gray-200 hover:border-gray-400 transition-colors"
-                          style={{ backgroundColor: color }}
-                        />
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </FormSection>
-          </Form>
+          <CategoryForm
+            onSubmit={handleCreateCategory}
+            onCancel={() => setIsCreateModalOpen(false)}
+            isLoading={createCategory.isPending}
+            mode="create"
+          />
         </ModalBody>
-        <ModalFooter>
-          <FormActions>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsCreateModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="default"
-              loading={isLoading}
-              onClick={() => handleCreateCategory({
-                name: 'Sample Category',
-                category_type: 'expense',
-                description: 'Sample description',
-                color: PREDEFINED_COLORS[0],
-                icon: PREDEFINED_ICONS[0]
-              })}
-            >
-              Create Category
-            </Button>
-          </FormActions>
-        </ModalFooter>
       </Modal>
 
       {/* Edit Category Modal */}

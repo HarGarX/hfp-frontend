@@ -23,13 +23,12 @@ import {
   ModalHeader
 } from '@/components/ui';
 import { Form, FormSection, FormActions } from '@/components/forms/FormComponents';
+import { GoalForm } from '@/components/forms/GoalForm';
 import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
 import { useGoals, useCreateGoal, useUpdateGoal, useDeleteGoal } from '@/lib/hooks/useApi';
 import { PageLoader } from '@/components/LoadingSpinner';
 import type { Goal, CreateGoalRequest } from '@/lib/types';
-
-// Mock data for development
 
 const GOAL_PRIORITIES = [
   { value: 'low', label: 'Low Priority' },
@@ -420,79 +419,16 @@ export default function GoalsPage() {
         size="md"
       >
         <ModalHeader>
-          <h2 className="text-lg font-semibold">Create New Goal</h2>
+          <h2 className="text-lg font-semibold dark:text-gray-100">Create New Goal</h2>
         </ModalHeader>
         <ModalBody>
-          <Form onSubmit={(e) => e.preventDefault()}>
-            <FormSection>
-              <div className="space-y-4">
-                <Input
-                  label="Goal Name"
-                  placeholder="e.g., Emergency Fund"
-                  required
-                />
-                <Input
-                  label="Description"
-                  placeholder="e.g., 6 months of expenses for financial security"
-                />
-                <div className="grid grid-cols-2 gap-4">
-                  <Input
-                    type="number"
-                    label="Target Amount"
-                    placeholder="0.00"
-                    step="0.01"
-                    required
-                  />
-                  <Input
-                    type="date"
-                    label="Target Date"
-                    required
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <Select
-                    label="Priority"
-                    placeholder="Select priority"
-                    options={GOAL_PRIORITIES}
-                    required
-                  />
-                  <Select
-                    label="Category"
-                    placeholder="Select category"
-                    options={GOAL_CATEGORIES.map(cat => ({
-                      value: cat,
-                      label: cat
-                    }))}
-                  />
-                </div>
-              </div>
-            </FormSection>
-          </Form>
+          <GoalForm
+            onSubmit={handleCreateGoal}
+            onCancel={() => setIsCreateModalOpen(false)}
+            isLoading={createGoal.isPending}
+            mode="create"
+          />
         </ModalBody>
-        <ModalFooter>
-          <FormActions>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsCreateModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="default"
-              loading={isLoading}
-              onClick={() => handleCreateGoal({
-                name: 'Sample Goal',
-                goal_type: 'savings',
-                description: 'Sample description',
-                target_amount: 5000,
-                target_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                priority: 'medium',
-              })}
-            >
-              Create Goal
-            </Button>
-          </FormActions>
-        </ModalFooter>
       </Modal>
 
       {/* Edit Goal Modal */}

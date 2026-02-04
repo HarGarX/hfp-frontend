@@ -66,7 +66,7 @@ export function Modal({
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"
+        className="fixed inset-0 bg-black/50 dark:bg-black/70 transition-opacity backdrop-blur-sm"
         onClick={closeOnOverlayClick ? onClose : undefined}
         aria-hidden="true"
       />
@@ -74,7 +74,7 @@ export function Modal({
       {/* Modal */}
       <div
         className={cn(
-          'relative bg-white rounded-lg shadow-xl max-h-full overflow-hidden flex flex-col',
+          'relative bg-white dark:bg-gray-900 rounded-lg shadow-xl max-h-full overflow-hidden flex flex-col',
           sizeClasses[size],
           className
         )}
@@ -84,9 +84,9 @@ export function Modal({
       >
         {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
             {title && (
-              <h2 id="modal-title" className="text-lg font-semibold text-gray-900">
+              <h2 id="modal-title" className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {title}
               </h2>
             )}
@@ -120,7 +120,7 @@ export const ModalHeader: React.FC<{ children: React.ReactNode; className?: stri
   children, 
   className 
 }) => (
-  <div className={cn('p-6 border-b border-gray-200', className)}>
+  <div className={cn('p-6 border-b border-gray-200 dark:border-gray-700', className)}>
     {children}
   </div>
 );
@@ -138,7 +138,7 @@ export const ModalFooter: React.FC<{ children: React.ReactNode; className?: stri
   children, 
   className 
 }) => (
-  <div className={cn('flex items-center justify-end space-x-2 p-6 border-t border-gray-200', className)}>
+  <div className={cn('flex items-center justify-end space-x-2 p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50', className)}>
     {children}
   </div>
 );

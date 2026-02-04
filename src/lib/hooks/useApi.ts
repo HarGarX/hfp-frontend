@@ -61,7 +61,13 @@ export const queryKeys = {
 export function useAccounts(params?: ListParams) {
   return useQuery({
     queryKey: queryKeys.accounts,
-    queryFn: () => api.accounts.list(params).then(res => res.data),
+    queryFn: async () => {
+      const response = await api.accounts.list(params);
+      // Backend returns paginated response: { accounts: [], total, page, totalPages }
+      // Extract just the accounts array
+      const paginatedData = response.data as any;
+      return paginatedData?.accounts || [];
+    },
   })
 }
 
