@@ -25,50 +25,9 @@ import {
 import { Form, FormSection, FormActions } from '@/components/forms/FormComponents';
 import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
+import { useAccounts, useCreateAccount, useUpdateAccount, useDeleteAccount } from '@/lib/hooks/useApi';
+import { PageLoader } from '@/components/LoadingSpinner';
 import type { Account, CreateAccountRequest } from '@/lib/types';
-
-// Mock data for development
-const MOCK_ACCOUNTS: Account[] = [
-  {
-    id: '1',
-    household_id: 'household-1',
-    name: 'Main Checking',
-    account_type: 'CHECKING',
-    bank_name: 'Chase Bank',
-    balance: 4250.50,
-    currency: 'USD',
-    is_active: true,
-    created_at: '2024-01-15',
-    updated_at: '2024-11-13',
-    deleted_at: undefined
-  },
-  {
-    id: '2',
-    household_id: 'household-1',
-    name: 'Emergency Savings',
-    account_type: 'SAVINGS',
-    bank_name: 'Bank of America',
-    balance: 15750.00,
-    currency: 'USD',
-    is_active: true,
-    created_at: '2024-01-15',
-    updated_at: '2024-11-13',
-    deleted_at: undefined
-  },
-  {
-    id: '3',
-    household_id: 'household-1',
-    name: 'Travel Rewards Card',
-    account_type: 'CREDIT',
-    bank_name: 'American Express',
-    balance: -1250.00,
-    currency: 'USD',
-    is_active: true,
-    created_at: '2024-02-01',
-    updated_at: '2024-11-13',
-    deleted_at: undefined
-  },
-];
 
 const ACCOUNT_TYPES = [
   { value: 'CHECKING', label: 'Checking Account' },
@@ -79,12 +38,17 @@ const ACCOUNT_TYPES = [
 ];
 
 export default function AccountsPage() {
-  const [accounts, setAccounts] = useState<Account[]>(MOCK_ACCOUNTS);
+  const { data: accounts = [], isLoading } = useAccounts();
+  const createAccount = useCreateAccount();
+  const updateAccount = useUpdateAccount();
+  const deleteAccount = useDeleteAccount();
+  
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+
+  if (isLoading) return <PageLoader />;
 
   const getAccountIcon = (type: string) => {
     switch (type) {
@@ -115,95 +79,34 @@ export default function AccountsPage() {
     }
   };
 
-  const handleUpdateAccount = async (id: string, data: any) => {
-    setIsLoading(true);
-    try {
-      // TODO: Replace with actual API call
-      // await api.put(`/accounts/${id}`, data);
-      
-      setAccounts(accounts.map(account => 
-        account.id === id ? { ...account, ...data, updated_at: new Date().toISOString() } : account
-      ));
-      setIsEditModalOpen(false);
-      setSelectedAccount(null);
-    } catch (error) {
-      console.error('Failed to update account:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleCreateAccount = async (accountData: CreateAccountRequest) => {
-    setIsLoading(true);
     try {
-      // In real app, this would call the API
-      // const newAccount = await api.accounts.create(accountData);
-      
-      // Mock implementation
-      const newAccount: Account = {
-        id: `account-${Date.now()}`,
-        household_id: 'household-1',
-        name: accountData.name,
-        account_type: accountData.account_type,
-        bank_name: accountData.bank_name || '',
-        balance: accountData.initial_balance,
-        currency: accountData.currency,
-        is_active: true,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        deleted_at: undefined
-      };
-      
-      setAccounts([...accounts, newAccount]);
+      await createAccount.mutateAsync(accountData);
       setIsCreateModalOpen(false);
     } catch (error) {
       console.error('Failed to create account:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleEditAccount = async (accountData: CreateAccountRequest) => {
     if (!selectedAccount) return;
     
-    setIsLoading(true);
     try {
-      // In real app, this would call the API
-      // const updatedAccount = await api.accounts.update(selectedAccount.id, accountData);
-      
-      // Mock implementation
-      const updatedAccounts = accounts.map(acc => 
-        acc.id === selectedAccount.id 
-          ? { ...acc, ...accountData, updated_at: new Date().toISOString() }
-          : acc
-      );
-      
-      setAccounts(updatedAccounts);
+      await updateAccount.mutateAsync({ id: selectedAccount.id, data: accountData });
       setIsEditModalOpen(false);
       setSelectedAccount(null);
     } catch (error) {
       console.error('Failed to update account:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleDeleteAccount = async (id: string) => {
-    setIsLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // await api.delete(`/accounts/${id}`);
-      
-      // Soft delete - mark as deleted instead of removing
-      setAccounts(accounts.map(account => 
-        account.id === id ? { ...account, deleted_at: new Date().toISOString() } : account
-      ));
+      await deleteAccount.mutateAsync(id);
       setIsDeleteModalOpen(false);
       setSelectedAccount(null);
     } catch (error) {
       console.error('Failed to delete account:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -258,7 +161,7 @@ export default function AccountsPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Credit Available</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(Math.abs(accounts.filter(acc => acc.account_type === 'CREDIT').reduce((sum, acc) => sum + acc.balance, 0)))}
+                  {formatCurrency(Math.abs(accounts.filter(acc => acc.account_type === 'credit_card').reduce((sum, acc) => sum + acc.balance, 0)))}
                 </p>
               </div>
               <CreditCard className="w-8 h-8 text-purple-600" />
@@ -406,12 +309,12 @@ export default function AccountsPage() {
             </Button>
             <Button 
               variant="default"
-              loading={isLoading}
+              loading={createAccount.isPending}
               onClick={() => handleCreateAccount({
                 name: 'Sample Account',
-                account_type: 'CHECKING',
+                account_type: 'checking',
                 bank_name: 'Sample Bank',
-                initial_balance: 1000,
+                balance: 1000,
                 currency: 'USD'
               })}
             >
@@ -497,13 +400,13 @@ export default function AccountsPage() {
             </Button>
             <Button 
               variant="default"
-              loading={isLoading}
-              onClick={() => selectedAccount && handleUpdateAccount(selectedAccount.id, {
+              loading={updateAccount.isPending}
+              onClick={() => selectedAccount && handleEditAccount({
                 name: selectedAccount.name,
                 account_type: selectedAccount.account_type,
                 bank_name: selectedAccount.bank_name,
-                currency: selectedAccount.currency,
-                is_active: selectedAccount.is_active
+                balance: selectedAccount.balance,
+                currency: selectedAccount.currency
               })}
             >
               Update Account

@@ -25,114 +25,11 @@ import {
 import { Form, FormSection, FormActions } from '@/components/forms/FormComponents';
 import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
+import { useTransactions, useCreateTransaction, useUpdateTransaction, useDeleteTransaction, useAccounts, useCategories } from '@/lib/hooks/useApi';
+import { PageLoader } from '@/components/LoadingSpinner';
 import type { Transaction, Account, Category, CreateTransactionRequest } from '@/lib/types';
 
 // Mock data for development
-const MOCK_TRANSACTIONS: Transaction[] = [
-  {
-    id: '1',
-    household_id: 'household-1',
-    account_id: '1',
-    category_id: 'cat-1',
-    amount: 125.50,
-    currency: 'USD',
-    description: 'Grocery shopping at Whole Foods',
-    transaction_date: '2024-11-13',
-    transaction_type: 'EXPENSE',
-    status: 'COMPLETED',
-    merchant: 'Whole Foods Market',
-    location: 'New York, NY',
-    tags: ['groceries', 'food'],
-    created_at: '2024-11-13T10:30:00.000Z',
-    updated_at: '2024-11-13T10:30:00.000Z',
-    deleted_at: undefined
-  },
-  {
-    id: '2',
-    household_id: 'household-1',
-    account_id: '2',
-    category_id: 'cat-2',
-    amount: 3200.00,
-    currency: 'USD',
-    description: 'Monthly salary deposit',
-    transaction_date: '2024-11-01',
-    transaction_type: 'INCOME',
-    status: 'COMPLETED',
-    merchant: 'Acme Corp',
-    location: 'Direct Deposit',
-    tags: ['salary', 'income'],
-    created_at: '2024-11-01T08:00:00.000Z',
-    updated_at: '2024-11-01T08:00:00.000Z',
-    deleted_at: undefined
-  },
-  {
-    id: '3',
-    household_id: 'household-1',
-    account_id: '1',
-    category_id: 'cat-3',
-    amount: 500.00,
-    currency: 'USD',
-    description: 'Transfer to Emergency Savings',
-    transaction_date: '2024-11-10',
-    transaction_type: 'TRANSFER',
-    status: 'COMPLETED',
-    location: 'Internal Transfer',
-    tags: ['savings', 'emergency-fund'],
-    created_at: '2024-11-10T15:20:00.000Z',
-    updated_at: '2024-11-10T15:20:00.000Z',
-    deleted_at: undefined
-  },
-  {
-    id: '4',
-    household_id: 'household-1',
-    account_id: '1',
-    category_id: 'cat-4',
-    amount: 85.20,
-    currency: 'USD',
-    description: 'Gas station fill-up',
-    transaction_date: '2024-11-12',
-    transaction_type: 'EXPENSE',
-    status: 'COMPLETED',
-    merchant: 'Shell',
-    location: 'Highway 101',
-    tags: ['gas', 'transportation'],
-    created_at: '2024-11-12T16:45:00.000Z',
-    updated_at: '2024-11-12T16:45:00.000Z',
-    deleted_at: undefined
-  },
-  {
-    id: '5',
-    household_id: 'household-1',
-    account_id: '3',
-    category_id: 'cat-5',
-    amount: 45.00,
-    currency: 'USD',
-    description: 'Netflix subscription',
-    transaction_date: '2024-11-09',
-    transaction_type: 'EXPENSE',
-    status: 'PENDING',
-    merchant: 'Netflix',
-    location: 'Online',
-    tags: ['entertainment', 'subscription'],
-    created_at: '2024-11-09T12:00:00.000Z',
-    updated_at: '2024-11-09T12:00:00.000Z',
-    deleted_at: undefined
-  }
-];
-
-const MOCK_ACCOUNTS: Account[] = [
-  { id: '1', name: 'Main Checking', account_type: 'CHECKING', balance: 4250.50 } as Account,
-  { id: '2', name: 'Emergency Savings', account_type: 'SAVINGS', balance: 15750.00 } as Account,
-  { id: '3', name: 'Travel Rewards Card', account_type: 'CREDIT', balance: -1250.00 } as Account,
-];
-
-const MOCK_CATEGORIES: Category[] = [
-  { id: 'cat-1', name: 'Groceries', color: '#10B981' } as Category,
-  { id: 'cat-2', name: 'Salary', color: '#3B82F6' } as Category,
-  { id: 'cat-3', name: 'Savings', color: '#8B5CF6' } as Category,
-  { id: 'cat-4', name: 'Transportation', color: '#F59E0B' } as Category,
-  { id: 'cat-5', name: 'Entertainment', color: '#EF4444' } as Category,
-];
 
 const TRANSACTION_TYPES = [
   { value: 'INCOME', label: 'Income' },
@@ -147,88 +44,51 @@ const TRANSACTION_STATUS = [
 ];
 
 export default function TransactionsPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>(MOCK_TRANSACTIONS);
-  const [accounts] = useState<Account[]>(MOCK_ACCOUNTS);
-  const [categories] = useState<Category[]>(MOCK_CATEGORIES);
+  const { data: transactions = [], isLoading: transactionsLoading } = useTransactions();
+  const { data: accounts = [], isLoading: accountsLoading } = useAccounts();
+  const { data: categories = [], isLoading: categoriesLoading } = useCategories();
+  const createTransaction = useCreateTransaction();
+  const updateTransaction = useUpdateTransaction();
+  const deleteTransaction = useDeleteTransaction();
+  
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterAccount, setFilterAccount] = useState<string>('all');
 
+  const isLoading = transactionsLoading || accountsLoading || categoriesLoading;
+  if (isLoading) return <PageLoader />;
+
   const handleCreateTransaction = async (transactionData: CreateTransactionRequest) => {
-    setIsLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // const newTransaction = await api.post('/transactions', transactionData);
-      
-      // Mock implementation
-      const newTransaction: Transaction = {
-        id: Date.now().toString(),
-        household_id: 'household-1',
-        account_id: transactionData.account_id,
-        category_id: transactionData.category_id,
-        amount: transactionData.amount,
-        currency: transactionData.currency,
-        description: transactionData.description,
-        transaction_date: transactionData.transaction_date,
-        transaction_type: transactionData.transaction_type,
-        status: 'COMPLETED',
-        merchant: transactionData.merchant,
-        location: transactionData.location,
-        tags: transactionData.tags || [],
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        deleted_at: undefined
-      };
-      
-      setTransactions([newTransaction, ...transactions]);
+      await createTransaction.mutateAsync(transactionData);
       setIsCreateModalOpen(false);
     } catch (error) {
       console.error('Failed to create transaction:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleUpdateTransaction = async (id: string, data: any) => {
-    setIsLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // await api.put(`/transactions/${id}`, data);
-      
-      setTransactions(transactions.map(transaction => 
-        transaction.id === id ? { ...transaction, ...data, updated_at: new Date().toISOString() } : transaction
-      ));
+      await updateTransaction.mutateAsync({ id, data });
       setIsEditModalOpen(false);
       setSelectedTransaction(null);
     } catch (error) {
       console.error('Failed to update transaction:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleDeleteTransaction = async (id: string) => {
-    setIsLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // await api.delete(`/transactions/${id}`);
-      
-      // Soft delete - mark as deleted instead of removing
-      setTransactions(transactions.map(transaction => 
-        transaction.id === id ? { ...transaction, deleted_at: new Date().toISOString() } : transaction
-      ));
+      await deleteTransaction.mutateAsync(id);
       setIsDeleteModalOpen(false);
       setSelectedTransaction(null);
     } catch (error) {
       console.error('Failed to delete transaction:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -303,11 +163,11 @@ export default function TransactionsPage() {
 
   // Calculate summary stats
   const totalIncome = filteredTransactions
-    .filter(t => t.transaction_type === 'INCOME' && t.status === 'COMPLETED')
+    .filter(t => t.transaction_type === 'income' && t.status === 'COMPLETED')
     .reduce((sum, t) => sum + t.amount, 0);
   
   const totalExpenses = filteredTransactions
-    .filter(t => t.transaction_type === 'EXPENSE' && t.status === 'COMPLETED')
+    .filter(t => t.transaction_type === 'expense' && t.status === 'COMPLETED')
     .reduce((sum, t) => sum + t.amount, 0);
 
   const netAmount = totalIncome - totalExpenses;
@@ -503,11 +363,11 @@ export default function TransactionsPage() {
                   </TableCell>
                   <TableCell className="text-right">
                     <span className={
-                      transaction.transaction_type === 'INCOME' ? 'text-green-600 font-semibold' :
-                      transaction.transaction_type === 'EXPENSE' ? 'text-red-600 font-semibold' :
+                      transaction.transaction_type === 'income' ? 'text-green-600 font-semibold' :
+                      transaction.transaction_type === 'expense' ? 'text-red-600 font-semibold' :
                       'text-blue-600 font-semibold'
                     }>
-                      {transaction.transaction_type === 'INCOME' ? '+' : transaction.transaction_type === 'EXPENSE' ? '-' : ''}
+                      {transaction.transaction_type === 'income' ? '+' : transaction.transaction_type === 'expense' ? '-' : ''}
                       {formatCurrency(transaction.amount)}
                     </span>
                   </TableCell>
@@ -636,7 +496,7 @@ export default function TransactionsPage() {
                 currency: 'USD',
                 description: 'Sample Transaction',
                 transaction_date: new Date().toISOString().split('T')[0],
-                transaction_type: 'EXPENSE',
+                transaction_type: 'expense',
                 merchant: 'Sample Store',
                 location: 'Sample Location',
                 tags: ['sample']

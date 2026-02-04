@@ -58,7 +58,7 @@ export interface Household extends BaseEntity {
 export interface Account extends BaseEntity {
   household_id: string
   name: string
-  account_type: 'CHECKING' | 'SAVINGS' | 'CREDIT' | 'INVESTMENT' | 'LOAN'
+  account_type: 'checking' | 'savings' | 'credit_card' | 'investment' | 'cash' | 'loan' | 'business' | 'other'
   bank_name?: string
   account_number_masked?: string
   balance: number
@@ -77,7 +77,7 @@ export interface Transaction extends BaseEntity {
   currency: string
   description: string
   transaction_date: string
-  transaction_type: 'INCOME' | 'EXPENSE' | 'TRANSFER'
+  transaction_type: 'income' | 'expense' | 'transfer'
   status: 'PENDING' | 'COMPLETED' | 'CANCELLED'
   merchant?: string
   location?: string
@@ -88,6 +88,7 @@ export interface Transaction extends BaseEntity {
 export interface Category extends BaseEntity {
   household_id: string
   name: string
+  category_type: 'expense' | 'income' | 'transfer'
   description?: string
   color?: string
   icon?: string
@@ -101,11 +102,12 @@ export interface Category extends BaseEntity {
 export interface Goal extends BaseEntity {
   household_id: string
   name: string
+  goal_type: 'savings' | 'debt_payoff' | 'emergency_fund' | 'investment' | 'purchase' | 'vacation' | 'custom'
   description?: string
   target_amount: number
   current_amount: number
   target_date: string
-  priority: 'LOW' | 'MEDIUM' | 'HIGH'
+  priority: 'low' | 'medium' | 'high' | 'critical'
   status: 'ACTIVE' | 'COMPLETED' | 'PAUSED'
   category?: string
 }
@@ -113,14 +115,24 @@ export interface Goal extends BaseEntity {
 // Loan Types
 export interface Loan extends BaseEntity {
   household_id: string
-  provider_name: string
-  loan_type: 'BNPL' | 'PERSONAL' | 'MORTGAGE' | 'AUTO' | 'STUDENT' | 'CREDIT_CARD'
+  name: string
+  description?: string
+  type: 'BNPL' | 'PERSONAL' | 'MORTGAGE' | 'AUTO' | 'STUDENT' | 'CREDIT_CARD' | 'OTHER'
+  status: 'ACTIVE' | 'PAID_OFF' | 'DEFAULTED' | 'CLOSED'
   principal_amount: number
   current_balance: number
   interest_rate: number
-  minimum_payment: number
-  due_date: string
-  status: 'ACTIVE' | 'PAID_OFF' | 'DEFAULTED'
+  payment_amount?: number
+  payment_frequency?: 'WEEKLY' | 'BIWEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY'
+  start_date?: string
+  end_date?: string
+  next_payment_date?: string
+  lender?: string
+  account_number?: string
+  minimum_payment?: number
+  due_date?: string
+  provider_name?: string
+  loan_type?: string
 }
 
 // Onboarding Types
@@ -195,7 +207,7 @@ export interface CreateAccountRequest {
   name: string
   account_type: Account['account_type']
   bank_name?: string
-  initial_balance: number
+  balance: number
   currency: string
 }
 
@@ -214,11 +226,11 @@ export interface CreateTransactionRequest {
 
 export interface CreateGoalRequest {
   name: string
+  goal_type: Goal['goal_type']
   description?: string
   target_amount: number
   target_date: string
   priority: Goal['priority']
-  category?: string
 }
 
 // Pagination and Filtering

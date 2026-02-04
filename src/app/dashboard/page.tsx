@@ -15,33 +15,18 @@ import {
   Calendar
 } from 'lucide-react';
 import { cn, formatCurrency } from '@/lib/utils';
-
-// Mock data for dashboard (will be replaced with real API calls)
-const MOCK_DATA = {
-  household: {
-    name: "The Smith Family",
-    totalBalance: 15750.50,
-    monthlyIncome: 8500.00,
-    monthlyExpenses: 6200.00,
-    members: 3
-  },
-  recentTransactions: [
-    { id: 1, description: 'Grocery Store', amount: -125.50, date: '2024-11-13', category: 'Food' },
-    { id: 2, description: 'Salary Deposit', amount: 4250.00, date: '2024-11-12', category: 'Income' },
-    { id: 3, description: 'Electric Bill', amount: -89.25, date: '2024-11-11', category: 'Utilities' },
-    { id: 4, description: 'Gas Station', amount: -45.00, date: '2024-11-10', category: 'Transportation' },
-  ],
-  goals: [
-    { id: 1, name: 'Emergency Fund', target: 25000, current: 15750, progress: 63 },
-    { id: 2, name: 'Vacation Fund', target: 5000, current: 2100, progress: 42 },
-    { id: 3, name: 'Home Renovation', target: 15000, current: 3200, progress: 21 },
-  ],
-  accounts: [
-    { id: 1, name: 'Checking Account', balance: 4250.50, type: 'checking' },
-    { id: 2, name: 'Savings Account', balance: 11500.00, type: 'savings' },
-    { id: 3, name: 'Credit Card', balance: -850.00, type: 'credit' },
-  ]
-};
+import { 
+  useAccounts, 
+  useAccountsSummary, 
+  useTransactions, 
+  useGoals, 
+  useHouseholds, 
+  useMe,
+  useCategories
+} from '@/lib/hooks/useApi';
+import { PageLoader } from '@/components/LoadingSpinner';
+import { SpendingOverTimeChart } from '@/components/charts/SpendingOverTimeChart';
+import { ExpensesByCategoryChart } from '@/components/charts/ExpensesByCategoryChart';
 
 const QUICK_ACTIONS = [
   { label: 'Add Transaction', icon: Plus, color: 'bg-blue-500 hover:bg-blue-600' },
@@ -53,6 +38,24 @@ const QUICK_ACTIONS = [
 export default function DashboardPage() {
   const [selectedTimeRange, setSelectedTimeRange] = useState('30d');
 
+  // API hooks
+  const { data: user } = useMe();
+  const { data: households = [] } = useHouseholds();
+  const { data: accounts = [], isLoading: accountsLoading } = useAccounts();
+  const { data: accountsSummary } = useAccountsSummary();
+  const { data: transactions = [], isLoading: transactionsLoading } = useTransactions({ limit: 100 });
+  const { data: goals = [], isLoading: goalsLoading } = useGoals({ limit: 3 });
+  const { data: categories = [] } = useCategories();
+
+  const household = households[0];
+  const isLoading = accountsLoading || transactionsLoading || goalsLoading;
+
+  if (isLoading) return <PageLoader />;
+
+  const totalBalance = accountsSummary?.totalBalance || accounts.reduce((sum: number, acc: any) => sum + acc.balance, 0);
+  const monthlyIncome = accountsSummary?.monthlyIncome || 0;
+  const monthlyExpenses = accountsSummary?.monthlyExpenses || 0;
+
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
@@ -63,7 +66,7 @@ export default function DashboardPage() {
               <Home className="w-8 h-8 text-indigo-600 mr-3" />
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">HFP Dashboard</h1>
-                <p className="text-sm text-gray-600">{MOCK_DATA.household.name}</p>
+                <p className="text-sm text-gray-600">{household?.name || user?.email || 'My Household'}</p>
               </div>
             </div>
             
@@ -90,11 +93,11 @@ export default function DashboardPage() {
           <div className="flex items-center space-x-6">
             <div className="flex items-center">
               <Users className="w-5 h-5 mr-2" />
-              <span>{MOCK_DATA.household.members} Members</span>
+              <span>{accounts.length} Accounts</span>
             </div>
             <div className="flex items-center">
               <Calendar className="w-5 h-5 mr-2" />
-              <span>Since November 2024</span>
+              <span>Active Dashboard</span>
             </div>
           </div>
         </div>
@@ -106,7 +109,7 @@ export default function DashboardPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Total Balance</p>
                 <p className="text-2xl font-bold text-gray-900">
-                  {formatCurrency(MOCK_DATA.household.totalBalance)}
+                  {formatCurrency(totalBalance)}
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -120,7 +123,7 @@ export default function DashboardPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Monthly Income</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(MOCK_DATA.household.monthlyIncome)}
+                  {formatCurrency(monthlyIncome)}
                 </p>
               </div>
               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
@@ -134,7 +137,7 @@ export default function DashboardPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Monthly Expenses</p>
                 <p className="text-2xl font-bold text-red-600">
-                  {formatCurrency(MOCK_DATA.household.monthlyExpenses)}
+                  {formatCurrency(monthlyExpenses)}
                 </p>
               </div>
               <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
@@ -148,7 +151,7 @@ export default function DashboardPage() {
               <div>
                 <p className="text-sm font-medium text-gray-600">Net Income</p>
                 <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(MOCK_DATA.household.monthlyIncome - MOCK_DATA.household.monthlyExpenses)}
+                  {formatCurrency(monthlyIncome - monthlyExpenses)}
                 </p>
               </div>
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
@@ -156,6 +159,12 @@ export default function DashboardPage() {
               </div>
             </div>
           </div>
+        </div>
+
+        {/* Charts Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+          <SpendingOverTimeChart transactions={transactions} />
+          <ExpensesByCategoryChart transactions={transactions} categories={categories} />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -170,7 +179,7 @@ export default function DashboardPage() {
               </div>
 
               <div className="space-y-4">
-                {MOCK_DATA.recentTransactions.map((transaction) => (
+                {transactions.slice(0, 5).map((transaction: any) => (
                   <div key={transaction.id} className="flex items-center justify-between p-3 hover:bg-gray-50 rounded-lg">
                     <div className="flex items-center space-x-3">
                       <div className={cn(
@@ -184,8 +193,8 @@ export default function DashboardPage() {
                         )}
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900">{transaction.description}</p>
-                        <p className="text-sm text-gray-500">{transaction.category}</p>
+                        <p className="font-medium text-gray-900">{transaction.description || 'Transaction'}</p>
+                        <p className="text-sm text-gray-500">{transaction.category?.name || 'Uncategorized'}</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -195,7 +204,7 @@ export default function DashboardPage() {
                       )}>
                         {transaction.amount > 0 ? '+' : ''}{formatCurrency(transaction.amount)}
                       </p>
-                      <p className="text-sm text-gray-500">{transaction.date}</p>
+                      <p className="text-sm text-gray-500">{new Date(transaction.date).toLocaleDateString()}</p>
                     </div>
                   </div>
                 ))}
@@ -209,24 +218,24 @@ export default function DashboardPage() {
             <div className="bg-white rounded-xl shadow-sm border p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Financial Goals</h3>
               <div className="space-y-4">
-                {MOCK_DATA.goals.map((goal) => (
+                {goals.map((goal: any) => (
                   <div key={goal.id}>
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-sm font-medium text-gray-700">{goal.name}</span>
-                      <span className="text-sm text-gray-500">{goal.progress}%</span>
+                      <span className="text-sm text-gray-500">{Math.round((goal.current_amount / goal.target_amount) * 100)}%</span>
                     </div>
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div 
                         className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${goal.progress}%` }}
+                        style={{ width: `${Math.min((goal.current_amount / goal.target_amount) * 100, 100)}%` }}
                       />
                     </div>
                     <div className="flex items-center justify-between mt-1">
                       <span className="text-xs text-gray-500">
-                        {formatCurrency(goal.current)}
+                        {formatCurrency(goal.current_amount)}
                       </span>
                       <span className="text-xs text-gray-500">
-                        {formatCurrency(goal.target)}
+                        {formatCurrency(goal.target_amount)}
                       </span>
                     </div>
                   </div>
@@ -257,7 +266,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-xl shadow-sm border p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Account Summary</h3>
               <div className="space-y-3">
-                {MOCK_DATA.accounts.map((account) => (
+                {accounts.map((account: any) => (
                   <div key={account.id} className="flex items-center justify-between">
                     <div className="flex items-center space-x-3">
                       <div className="w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">

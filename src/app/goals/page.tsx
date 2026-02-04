@@ -25,91 +25,27 @@ import {
 import { Form, FormSection, FormActions } from '@/components/forms/FormComponents';
 import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
+import { useGoals, useCreateGoal, useUpdateGoal, useDeleteGoal } from '@/lib/hooks/useApi';
+import { PageLoader } from '@/components/LoadingSpinner';
 import type { Goal, CreateGoalRequest } from '@/lib/types';
 
 // Mock data for development
-const MOCK_GOALS: Goal[] = [
-  {
-    id: '1',
-    household_id: 'household-1',
-    name: 'Emergency Fund',
-    description: '6 months of expenses for financial security',
-    target_amount: 15000.00,
-    current_amount: 8750.00,
-    target_date: '2025-06-30',
-    priority: 'HIGH',
-    status: 'ACTIVE',
-    category: 'Emergency',
-    created_at: '2024-01-15T00:00:00.000Z',
-    updated_at: '2024-11-13T00:00:00.000Z',
-    deleted_at: undefined
-  },
-  {
-    id: '2',
-    household_id: 'household-1',
-    name: 'European Vacation',
-    description: 'Two week trip to Europe next summer',
-    target_amount: 8000.00,
-    current_amount: 2400.00,
-    target_date: '2025-07-15',
-    priority: 'MEDIUM',
-    status: 'ACTIVE',
-    category: 'Travel',
-    created_at: '2024-02-01T00:00:00.000Z',
-    updated_at: '2024-11-13T00:00:00.000Z',
-    deleted_at: undefined
-  },
-  {
-    id: '3',
-    household_id: 'household-1',
-    name: 'New Car Down Payment',
-    description: 'Save for 20% down payment on new car',
-    target_amount: 12000.00,
-    current_amount: 5200.00,
-    target_date: '2025-12-01',
-    priority: 'MEDIUM',
-    status: 'ACTIVE',
-    category: 'Transportation',
-    created_at: '2024-03-10T00:00:00.000Z',
-    updated_at: '2024-11-13T00:00:00.000Z',
-    deleted_at: undefined
-  },
-  {
-    id: '4',
-    household_id: 'household-1',
-    name: 'Home Office Setup',
-    description: 'Upgrade home office with new desk and equipment',
-    target_amount: 3500.00,
-    current_amount: 3500.00,
-    target_date: '2024-10-31',
-    priority: 'LOW',
-    status: 'COMPLETED',
-    category: 'Home Improvement',
-    created_at: '2024-08-01T00:00:00.000Z',
-    updated_at: '2024-10-31T00:00:00.000Z',
-    deleted_at: undefined
-  },
-  {
-    id: '5',
-    household_id: 'household-1',
-    name: 'Wedding Fund',
-    description: 'Save for dream wedding next year',
-    target_amount: 25000.00,
-    current_amount: 4800.00,
-    target_date: '2025-09-15',
-    priority: 'HIGH',
-    status: 'PAUSED',
-    category: 'Life Events',
-    created_at: '2024-01-20T00:00:00.000Z',
-    updated_at: '2024-11-13T00:00:00.000Z',
-    deleted_at: undefined
-  }
-];
 
 const GOAL_PRIORITIES = [
-  { value: 'LOW', label: 'Low Priority' },
-  { value: 'MEDIUM', label: 'Medium Priority' },
-  { value: 'HIGH', label: 'High Priority' },
+  { value: 'low', label: 'Low Priority' },
+  { value: 'medium', label: 'Medium Priority' },
+  { value: 'high', label: 'High Priority' },
+  { value: 'critical', label: 'Critical Priority' },
+];
+
+const GOAL_TYPES = [
+  { value: 'savings', label: 'Savings' },
+  { value: 'debt_payoff', label: 'Debt Payoff' },
+  { value: 'emergency_fund', label: 'Emergency Fund' },
+  { value: 'investment', label: 'Investment' },
+  { value: 'purchase', label: 'Purchase' },
+  { value: 'vacation', label: 'Vacation' },
+  { value: 'custom', label: 'Custom' },
 ];
 
 const GOAL_STATUS = [
@@ -131,81 +67,48 @@ const GOAL_CATEGORIES = [
 ];
 
 export default function GoalsPage() {
-  const [goals, setGoals] = useState<Goal[]>(MOCK_GOALS);
+  const { data: goals = [], isLoading } = useGoals();
+  const createGoal = useCreateGoal();
+  const updateGoal = useUpdateGoal();
+  const deleteGoal = useDeleteGoal();
+  
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState<Goal | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterPriority, setFilterPriority] = useState<string>('all');
 
+  if (isLoading) return <PageLoader />;
+
+  if (isLoading) return <PageLoader />;
+
   const handleCreateGoal = async (goalData: CreateGoalRequest) => {
-    setIsLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // const newGoal = await api.post('/goals', goalData);
-      
-      // Mock implementation
-      const newGoal: Goal = {
-        id: Date.now().toString(),
-        household_id: 'household-1',
-        name: goalData.name,
-        description: goalData.description,
-        target_amount: goalData.target_amount,
-        current_amount: 0,
-        target_date: goalData.target_date,
-        priority: goalData.priority,
-        status: 'ACTIVE',
-        category: goalData.category,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        deleted_at: undefined
-      };
-      
-      setGoals([newGoal, ...goals]);
+      await createGoal.mutateAsync(goalData);
       setIsCreateModalOpen(false);
     } catch (error) {
       console.error('Failed to create goal:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleUpdateGoal = async (id: string, data: any) => {
-    setIsLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // await api.put(`/goals/${id}`, data);
-      
-      setGoals(goals.map(goal => 
-        goal.id === id ? { ...goal, ...data, updated_at: new Date().toISOString() } : goal
-      ));
+      await updateGoal.mutateAsync({ id, data });
       setIsEditModalOpen(false);
       setSelectedGoal(null);
     } catch (error) {
       console.error('Failed to update goal:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleDeleteGoal = async (id: string) => {
-    setIsLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // await api.delete(`/goals/${id}`);
-      
-      // Soft delete - mark as deleted instead of removing
-      setGoals(goals.map(goal => 
-        goal.id === id ? { ...goal, deleted_at: new Date().toISOString() } : goal
-      ));
+      await deleteGoal.mutateAsync(id);
       setIsDeleteModalOpen(false);
       setSelectedGoal(null);
     } catch (error) {
       console.error('Failed to delete goal:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -236,12 +139,14 @@ export default function GoalsPage() {
   };
 
   const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'HIGH':
+    switch (priority.toLowerCase()) {
+      case 'critical':
         return 'destructive';
-      case 'MEDIUM':
+      case 'high':
+        return 'destructive';
+      case 'medium':
         return 'warning';
-      case 'LOW':
+      case 'low':
         return 'default';
       default:
         return 'default';
@@ -577,11 +482,11 @@ export default function GoalsPage() {
               loading={isLoading}
               onClick={() => handleCreateGoal({
                 name: 'Sample Goal',
+                goal_type: 'savings',
                 description: 'Sample description',
                 target_amount: 5000,
                 target_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-                priority: 'MEDIUM',
-                category: 'Other'
+                priority: 'medium',
               })}
             >
               Create Goal

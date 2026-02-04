@@ -18,7 +18,10 @@ import {
   User,
   Menu,
   X,
-  LogOut
+  LogOut,
+  Users,
+  LineChart,
+  Lightbulb
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui';
@@ -94,8 +97,15 @@ const navigationSections: NavigationSection[] = [
         id: 'insights',
         label: 'Insights',
         href: '/insights',
-        icon: TrendingUp,
-        description: 'Financial insights and analytics'
+        icon: Lightbulb,
+        description: 'AI-powered financial insights'
+      },
+      {
+        id: 'simulations',
+        label: 'Simulations',
+        href: '/simulations',
+        icon: LineChart,
+        description: 'What-if scenarios and forecasting'
       }
     ]
   },
@@ -105,30 +115,37 @@ const navigationSections: NavigationSection[] = [
     items: [
       {
         id: 'loans',
-        label: 'Loans & BNPL',
+        label: 'Loans & Debt',
         href: '/loans',
         icon: LoanIcon,
-        description: 'Manage loans and buy-now-pay-later'
+        description: 'Manage loans and debt payoff'
       }
     ]
   },
   {
     id: 'tools',
-    label: 'Tools & Reports',
+    label: 'Tools & Settings',
     items: [
-      {
-        id: 'reports',
-        label: 'Reports',
-        href: '/reports',
-        icon: BarChart3,
-        description: 'Financial reports and exports'
-      },
       {
         id: 'notifications',
         label: 'Notifications',
         href: '/notifications',
         icon: Bell,
         description: 'Alerts and notifications'
+      },
+      {
+        id: 'household',
+        label: 'Household',
+        href: '/household',
+        icon: Users,
+        description: 'Manage household members'
+      },
+      {
+        id: 'settings',
+        label: 'Settings',
+        href: '/settings',
+        icon: Settings,
+        description: 'App settings and preferences'
       }
     ]
   }
@@ -270,6 +287,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                       ? "bg-gray-100 text-gray-900"
                       : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
                   )}
+                >
+                  <Icon className="w-4 h-4 mr-3 text-gray-400" />
+                  {item.label}
+                </Link>
+              );
+            })}
+            
             <button
               onClick={handleLogout}
               className="w-full flex items-center px-3 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 hover:text-gray-900 transition-colors"
@@ -277,12 +301,6 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
               <LogOut className="w-4 h-4 mr-3 text-gray-400" />
               Logout
             </button>
-                >
-                  <Icon className="w-4 h-4 mr-3 text-gray-400" />
-                  {item.label}
-                </Link>
-              );
-            })}
           </div>
         </div>
       </div>

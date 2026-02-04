@@ -22,11 +22,17 @@ import type {
 // API Configuration
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000'
 const API_TIMEOUT = parseInt(process.env.NEXT_PUBLIC_API_TIMEOUT || '10000', 10)
+const MAX_RETRIES = 3
+const RETRY_DELAY = 1000 // 1 second
 
-// Enhanced fetch wrapper with error handling
+// Sleep helper for retry delays
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+// Enhanced fetch wrapper with error handling and retry logic
 async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  retryCount = 0
 ): Promise<ApiResponse<T>> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), API_TIMEOUT)
@@ -37,6 +43,7 @@ async function apiRequest<T>(
       signal: controller.signal,
       ...options,
       headers: {
+        'Content-Type': 'application/json',
         ...getAuthHeaders(),
         ...options.headers,
       },
@@ -47,11 +54,48 @@ async function apiRequest<T>(
     const response = await fetch(url, config)
     clearTimeout(timeoutId)
 
+    // Handle rate limiting (429)
+    if (response.status === 429) {
+      const retryAfter = response.headers.get('Retry-After')
+      const delay = retryAfter ? parseInt(retryAfter) * 1000 : RETRY_DELAY * Math.pow(2, retryCount)
+      
+      if (retryCount < MAX_RETRIES) {
+        console.warn(`[API] Rate limited. Retrying after ${delay}ms...`)
+        await sleep(delay)
+        return apiRequest<T>(endpoint, options, retryCount + 1)
+      }
+      
+      throw new Error('Rate limit exceeded. Please try again later.')
+    }
+
+    // Handle authentication errors
+    if (response.status === 401) {
+      // Clear auth token and redirect to login
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('token')
+        window.location.href = '/login'
+      }
+      throw new Error('Authentication required. Please log in.')
+    }
+
+    // Handle permission errors
+    if (response.status === 403) {
+      throw new Error('You do not have permission to perform this action.')
+    }
+
     if (!response.ok) {
       const errorData: ApiError = await response.json().catch(() => ({
         message: `HTTP ${response.status}: ${response.statusText}`,
         statusCode: response.status,
       }))
+      
+      // Retry on server errors (5xx) but not client errors (4xx)
+      if (response.status >= 500 && retryCount < MAX_RETRIES) {
+        const delay = RETRY_DELAY * Math.pow(2, retryCount)
+        console.warn(`[API] Server error. Retrying after ${delay}ms...`)
+        await sleep(delay)
+        return apiRequest<T>(endpoint, options, retryCount + 1)
+      }
       
       throw new Error(errorData.message || `API request failed: ${response.status}`)
     }
@@ -63,6 +107,14 @@ async function apiRequest<T>(
     
     if (error instanceof Error) {
       console.error(`[API Error] ${endpoint}:`, error.message)
+      
+      // Retry on network errors
+      if (error.name === 'TypeError' && retryCount < MAX_RETRIES) {
+        const delay = RETRY_DELAY * Math.pow(2, retryCount)
+        console.warn(`[API] Network error. Retrying after ${delay}ms...`)
+        await sleep(delay)
+        return apiRequest<T>(endpoint, options, retryCount + 1)
+      }
       
       if (error.name === 'AbortError') {
         throw new Error('Request timeout - please try again')
@@ -122,25 +174,10 @@ export const api = {
       apiRequest<User>(`/users/${id}`),
     
     me: async () =>
-      apiRequest<User>('/users/me'),
+      apiRequest<User>('/auth/me'),
     
     update: async (id: string, data: Partial<User>) =>
       apiRequest<User>(`/users/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify(data),
-      }),
-  },
-
-  // Household endpoints
-  households: {
-    list: async () =>
-      apiRequest<Household[]>('/households'),
-    
-    get: async (id: string) =>
-      apiRequest<Household>(`/households/${id}`),
-    
-    update: async (id: string, data: Partial<Household>) =>
-      apiRequest<Household>(`/households/${id}`, {
         method: 'PATCH',
         body: JSON.stringify(data),
       }),
@@ -177,6 +214,9 @@ export const api = {
       apiRequest<void>(`/accounts/${id}`, {
         method: 'DELETE',
       }),
+
+    summary: async () =>
+      apiRequest<any>('/accounts/summary'),
   },
 
   // Transaction endpoints
@@ -273,15 +313,8 @@ export const api = {
 
   // Loan endpoints
   loans: {
-    list: async (params?: ListParams) => {
-      const query = new URLSearchParams()
-      if (params) {
-        Object.entries(params).forEach(([key, value]) => {
-          if (value !== undefined) query.append(key, String(value))
-        })
-      }
-      return apiRequest<Loan[]>(`/loans?${query}`)
-    },
+    list: async () =>
+      apiRequest<Loan[]>('/loans'),
     
     get: async (id: string) =>
       apiRequest<Loan>(`/loans/${id}`),
@@ -302,10 +335,62 @@ export const api = {
       apiRequest<void>(`/loans/${id}`, {
         method: 'DELETE',
       }),
+
+    // Payments
+    getPayments: async (loanId: string) =>
+      apiRequest<any[]>(`/loans/${loanId}/payments`),
+
+    addPayment: async (loanId: string, data: { amount: number; payment_date: string; notes?: string }) =>
+      apiRequest<any>(`/loans/${loanId}/payments`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    // Projection
+    getProjection: async (loanId: string, extraPayment?: number) => {
+      const query = extraPayment ? `?extra_payment=${extraPayment}` : ''
+      return apiRequest<any>(`/loans/${loanId}/payoff-projection${query}`)
+    },
   },
 
   // Insights endpoints
   insights: {
+    list: async () =>
+      apiRequest<any[]>('/insights'),
+
+    get: async (id: string) =>
+      apiRequest<any>(`/insights/${id}`),
+
+    create: async (data: any) =>
+      apiRequest<any>('/insights', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+
+    update: async (id: string, data: any) =>
+      apiRequest<any>(`/insights/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
+    delete: async (id: string) =>
+      apiRequest<void>(`/insights/${id}`, {
+        method: 'DELETE',
+      }),
+
+    getSummary: async () =>
+      apiRequest<{ total_insights: number; high_priority: number; medium_priority: number; low_priority: number; financial_health_score: number; last_generated?: string }>('/insights/summary'),
+
+    acknowledge: async (id: string) =>
+      apiRequest<void>(`/insights/${id}/acknowledge`, {
+        method: 'POST',
+      }),
+
+    dismiss: async (id: string) =>
+      apiRequest<void>(`/insights/${id}/dismiss`, {
+        method: 'POST',
+      }),
+    
     getOverview: async () =>
       apiRequest<{
         totalIncome: number
@@ -324,6 +409,47 @@ export const api = {
 
   // Notifications endpoints
   notifications: {
+    list: async (params?: ListParams & { status?: 'READ' | 'UNREAD' }) => {
+      const query = new URLSearchParams()
+      if (params) {
+        Object.entries(params).forEach(([key, value]) => {
+          if (value !== undefined) query.append(key, String(value))
+        })
+      }
+      return apiRequest<any[]>(`/notifications/my?${query}`)
+    },
+
+    getUnreadCount: async () =>
+      apiRequest<{ count: number }>('/notifications/unread-count'),
+    
+    markAsRead: async (id: string) =>
+      apiRequest<void>(`/notifications/${id}/read`, {
+        method: 'PATCH',
+        body: JSON.stringify({}),
+      }),
+    
+    markAllAsRead: async () =>
+      apiRequest<void>('/notifications/read-all', {
+        method: 'PATCH',
+      }),
+
+    delete: async (id: string) =>
+      apiRequest<void>(`/notifications/${id}`, {
+        method: 'DELETE',
+      }),
+
+    getPreferences: async () =>
+      apiRequest<any>('/notification-preferences'),
+
+    updatePreferences: async (data: any) =>
+      apiRequest<any>('/notification-preferences', {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+  },
+
+  // Simulations endpoints
+  simulations: {
     list: async (params?: ListParams) => {
       const query = new URLSearchParams()
       if (params) {
@@ -331,18 +457,74 @@ export const api = {
           if (value !== undefined) query.append(key, String(value))
         })
       }
-      return apiRequest<any[]>(`/notifications?${query}`)
+      return apiRequest<any[]>(`/simulations?${query}`)
     },
-    
-    markAsRead: async (id: string) =>
-      apiRequest<void>(`/notifications/${id}/read`, {
-        method: 'PATCH',
+
+    get: async (id: string) =>
+      apiRequest<any>(`/simulations/${id}`),
+
+    create: async (data: any) =>
+      apiRequest<any>('/simulations', {
+        method: 'POST',
+        body: JSON.stringify(data),
       }),
-    
-    markAllAsRead: async () =>
-      apiRequest<void>('/notifications/read-all', {
+
+    update: async (id: string, data: any) =>
+      apiRequest<any>(`/simulations/${id}`, {
         method: 'PATCH',
+        body: JSON.stringify(data),
       }),
+
+    delete: async (id: string) =>
+      apiRequest<void>(`/simulations/${id}`, {
+        method: 'DELETE',
+      }),
+
+    run: async (id: string, parameters?: any) =>
+      apiRequest<any>(`/simulations/${id}/run`, {
+        method: 'POST',
+        body: JSON.stringify(parameters || {}),
+      }),
+  },
+
+  // Households endpoints (extended)
+  households: {
+    list: async () =>
+      apiRequest<Household[]>('/households'),
+    
+    get: async (id: string) =>
+      apiRequest<Household>(`/households/${id}`),
+    
+    update: async (id: string, data: Partial<Household>) =>
+      apiRequest<Household>(`/households/${id}`, {
+        method: 'PATCH',
+        body: JSON.stringify(data),
+      }),
+
+    // Members management - NOT YET IMPLEMENTED IN BACKEND
+    // TODO: Uncomment when backend implements these endpoints
+    // getMembers: async (householdId: string) =>
+    //   apiRequest<any[]>(`/households/${householdId}/members`),
+
+    // addMember: async (householdId: string, data: { email: string; role: string }) =>
+    //   apiRequest<any>(`/households/${householdId}/members`, {
+    //     method: 'POST',
+    //     body: JSON.stringify(data),
+    //   }),
+
+    // updateMemberRole: async (householdId: string, userId: string, role: string) =>
+    //   apiRequest<any>(`/households/${householdId}/members/${userId}`, {
+    //     method: 'PATCH',
+    //     body: JSON.stringify({ role }),
+    //   }),
+
+    // removeMember: async (householdId: string, userId: string) =>
+    //   apiRequest<void>(`/households/${householdId}/members/${userId}`, {
+    //     method: 'DELETE',
+    //   }),
+
+    getStats: async (householdId: string) =>
+      apiRequest<any>(`/households/${householdId}/stats`),
   },
 }
 

@@ -25,131 +25,9 @@ import {
 import { Form, FormSection, FormActions } from '@/components/forms/FormComponents';
 import { formatCurrency } from '@/lib/utils';
 import api from '@/lib/api';
+import { useCategories, useCreateCategory, useUpdateCategory, useDeleteCategory } from '@/lib/hooks/useApi';
+import { PageLoader } from '@/components/LoadingSpinner';
 import type { Category } from '@/lib/types';
-
-// Mock data for development
-const MOCK_CATEGORIES: Category[] = [
-  {
-    id: '1',
-    household_id: 'household-1',
-    name: 'Food & Dining',
-    description: 'Restaurants, groceries, and food delivery',
-    color: '#10B981',
-    icon: '🍔',
-    parent_id: undefined,
-    is_system: true,
-    transaction_count: 45,
-    total_amount: 1250.75,
-    created_at: '2024-01-15T00:00:00.000Z',
-    updated_at: '2024-11-13T00:00:00.000Z',
-    deleted_at: undefined
-  },
-  {
-    id: '2',
-    household_id: 'household-1',
-    name: 'Groceries',
-    description: 'Supermarket and grocery store purchases',
-    color: '#34D399',
-    icon: '🛒',
-    parent_id: '1',
-    is_system: false,
-    transaction_count: 28,
-    total_amount: 850.25,
-    created_at: '2024-01-15T00:00:00.000Z',
-    updated_at: '2024-11-13T00:00:00.000Z',
-    deleted_at: undefined
-  },
-  {
-    id: '3',
-    household_id: 'household-1',
-    name: 'Restaurants',
-    description: 'Dining out and takeaway food',
-    color: '#6EE7B7',
-    icon: '🍽️',
-    parent_id: '1',
-    is_system: false,
-    transaction_count: 17,
-    total_amount: 400.50,
-    created_at: '2024-01-15T00:00:00.000Z',
-    updated_at: '2024-11-13T00:00:00.000Z',
-    deleted_at: undefined
-  },
-  {
-    id: '4',
-    household_id: 'household-1',
-    name: 'Transportation',
-    description: 'Gas, public transit, rideshare, and parking',
-    color: '#F59E0B',
-    icon: '🚗',
-    parent_id: undefined,
-    is_system: true,
-    transaction_count: 32,
-    total_amount: 680.90,
-    created_at: '2024-01-15T00:00:00.000Z',
-    updated_at: '2024-11-13T00:00:00.000Z',
-    deleted_at: undefined
-  },
-  {
-    id: '5',
-    household_id: 'household-1',
-    name: 'Gas & Fuel',
-    description: 'Vehicle fuel expenses',
-    color: '#FBBF24',
-    icon: '⛽',
-    parent_id: '4',
-    is_system: false,
-    transaction_count: 20,
-    total_amount: 480.75,
-    created_at: '2024-01-15T00:00:00.000Z',
-    updated_at: '2024-11-13T00:00:00.000Z',
-    deleted_at: undefined
-  },
-  {
-    id: '6',
-    household_id: 'household-1',
-    name: 'Entertainment',
-    description: 'Movies, games, subscriptions, and leisure activities',
-    color: '#EF4444',
-    icon: '🎬',
-    parent_id: undefined,
-    is_system: true,
-    transaction_count: 18,
-    total_amount: 325.60,
-    created_at: '2024-01-15T00:00:00.000Z',
-    updated_at: '2024-11-13T00:00:00.000Z',
-    deleted_at: undefined
-  },
-  {
-    id: '7',
-    household_id: 'household-1',
-    name: 'Income',
-    description: 'Salary, freelance work, and other income',
-    color: '#3B82F6',
-    icon: '💰',
-    parent_id: undefined,
-    is_system: true,
-    transaction_count: 12,
-    total_amount: 8500.00,
-    created_at: '2024-01-15T00:00:00.000Z',
-    updated_at: '2024-11-13T00:00:00.000Z',
-    deleted_at: undefined
-  },
-  {
-    id: '8',
-    household_id: 'household-1',
-    name: 'Bills & Utilities',
-    description: 'Monthly bills, utilities, and subscriptions',
-    color: '#8B5CF6',
-    icon: '📄',
-    parent_id: undefined,
-    is_system: true,
-    transaction_count: 25,
-    total_amount: 875.40,
-    created_at: '2024-01-15T00:00:00.000Z',
-    updated_at: '2024-11-13T00:00:00.000Z',
-    deleted_at: undefined
-  }
-];
 
 const PREDEFINED_ICONS = [
   '🍔', '🛒', '🍽️', '🚗', '⛽', '🎬', '💰', '📄', '🏠', '💊', '👔', '✈️', '🎓', '🛍️', '🎮', '📱', '🏋️', '💄', '🔧', '🎨'
@@ -163,6 +41,7 @@ const PREDEFINED_COLORS = [
 
 interface CreateCategoryRequest {
   name: string;
+  category_type: 'expense' | 'income' | 'transfer';
   description?: string;
   color: string;
   icon?: string;
@@ -170,82 +49,47 @@ interface CreateCategoryRequest {
 }
 
 export default function CategoriesPage() {
-  const [categories, setCategories] = useState<Category[]>(MOCK_CATEGORIES);
+  const { data: categories = [], isLoading } = useCategories();
+  const createCategory = useCreateCategory();
+  const updateCategory = useUpdateCategory();
+  const deleteCategory = useDeleteCategory();
+  
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showSystemCategories, setShowSystemCategories] = useState(true);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
 
+  if (isLoading) return <PageLoader />;
+
   const handleCreateCategory = async (categoryData: CreateCategoryRequest) => {
-    setIsLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // const newCategory = await api.post('/categories', categoryData);
-      
-      // Mock implementation
-      const newCategory: Category = {
-        id: Date.now().toString(),
-        household_id: 'household-1',
-        name: categoryData.name,
-        description: categoryData.description,
-        color: categoryData.color,
-        icon: categoryData.icon,
-        parent_id: categoryData.parent_id,
-        is_system: false,
-        transaction_count: 0,
-        total_amount: 0,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        deleted_at: undefined
-      };
-      
-      setCategories([...categories, newCategory]);
+      await createCategory.mutateAsync(categoryData);
       setIsCreateModalOpen(false);
     } catch (error) {
       console.error('Failed to create category:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleUpdateCategory = async (id: string, data: any) => {
-    setIsLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // await api.put(`/categories/${id}`, data);
-      
-      setCategories(categories.map(category => 
-        category.id === id ? { ...category, ...data, updated_at: new Date().toISOString() } : category
-      ));
+      await updateCategory.mutateAsync({ id, data });
       setIsEditModalOpen(false);
       setSelectedCategory(null);
     } catch (error) {
       console.error('Failed to update category:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const handleDeleteCategory = async (id: string) => {
-    setIsLoading(true);
     try {
-      // TODO: Replace with actual API call
-      // await api.delete(`/categories/${id}`);
-      
-      // Soft delete - mark as deleted instead of removing
-      setCategories(categories.map(category => 
-        category.id === id ? { ...category, deleted_at: new Date().toISOString() } : category
-      ));
+      await deleteCategory.mutateAsync(id);
       setIsDeleteModalOpen(false);
       setSelectedCategory(null);
     } catch (error) {
       console.error('Failed to delete category:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -643,6 +487,7 @@ export default function CategoriesPage() {
               loading={isLoading}
               onClick={() => handleCreateCategory({
                 name: 'Sample Category',
+                category_type: 'expense',
                 description: 'Sample description',
                 color: PREDEFINED_COLORS[0],
                 icon: PREDEFINED_ICONS[0]
