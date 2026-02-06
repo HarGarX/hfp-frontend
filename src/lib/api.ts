@@ -229,7 +229,7 @@ export const api = {
           if (value !== undefined) query.append(key, String(value))
         })
       }
-      return apiRequest<Transaction[]>(`/transactions?${query}`)
+      return apiRequest<{ transactions: Transaction[], meta: any }>(`/transactions?${query}`)
     },
     
     get: async (id: string) =>

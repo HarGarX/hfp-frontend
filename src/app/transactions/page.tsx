@@ -1,46 +1,23 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Search, Filter, Download, ArrowUpDown, TrendingUp, TrendingDown, ArrowRightLeft } from 'lucide-react';
+import React, { useState } from 'react';
+import { Plus, Edit2, Trash2, TrendingUp, TrendingDown, ArrowLeftRight, CreditCard, BarChart3 } from 'lucide-react';
 import { 
   Button,
-  Input,
-  Select,
   Card,
   CardContent,
-  CardHeader,
-  CardTitle,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-  Badge,
   Modal,
   ModalBody,
-  ModalFooter,
-  ModalHeader
+  ModalHeader,
 } from '@/components/ui';
-import { Form, FormSection, FormActions } from '@/components/forms/FormComponents';
-import { TransactionForm } from '@/components/forms/TransactionForm';
 import { formatCurrency } from '@/lib/utils';
-import api from '@/lib/api';
 import { useTransactions, useCreateTransaction, useUpdateTransaction, useDeleteTransaction, useAccounts, useCategories } from '@/lib/hooks/useApi';
 import { PageLoader } from '@/components/LoadingSpinner';
-import type { Transaction, Account, Category, CreateTransactionRequest } from '@/lib/types';
-
-const TRANSACTION_TYPES = [
-  { value: 'INCOME', label: 'Income' },
-  { value: 'EXPENSE', label: 'Expense' },
-  { value: 'TRANSFER', label: 'Transfer' },
-];
-
-const TRANSACTION_STATUS = [
-  { value: 'PENDING', label: 'Pending' },
-  { value: 'COMPLETED', label: 'Completed' },
-  { value: 'CANCELLED', label: 'Cancelled' },
-];
+import { Account, Category } from '@/lib/types';
+import { EmptyState } from '@/components/EmptyState';
+import { TransactionForm, type TransactionFormData } from '@/components/forms/TransactionForm';
+import type { Transaction } from '@/lib/types';
+import { format } from 'date-fns';
 
 export default function TransactionsPage() {
   const { data: transactions = [], isLoading: transactionsLoading } = useTransactions();
@@ -54,361 +31,314 @@ export default function TransactionsPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [filterType, setFilterType] = useState<string>('all');
-  const [filterStatus, setFilterStatus] = useState<string>('all');
-  const [filterAccount, setFilterAccount] = useState<string>('all');
+
+  const handleCreateTransaction = async (data: TransactionFormData) => {
+    await createTransaction.mutateAsync(data);
+    setIsCreateModalOpen(false);
+  };
+
+  const handleUpdateTransaction = async (data: TransactionFormData) => {
+    if (!selectedTransaction) return;
+    await updateTransaction.mutateAsync({ id: selectedTransaction.id, data });
+    setIsEditModalOpen(false);
+    setSelectedTransaction(null);
+  };
+
+  const handleDeleteTransaction = async () => {
+    if (!selectedTransaction) return;
+    await deleteTransaction.mutateAsync(selectedTransaction.id);
+    setIsDeleteModalOpen(false);
+    setSelectedTransaction(null);
+  };
 
   const isLoading = transactionsLoading || accountsLoading || categoriesLoading;
   if (isLoading) return <PageLoader />;
 
-  const handleCreateTransaction = async (transactionData: CreateTransactionRequest) => {
-    try {
-      await createTransaction.mutateAsync(transactionData);
-      setIsCreateModalOpen(false);
-    } catch (error) {
-      console.error('Failed to create transaction:', error);
-    }
-  };
-
-  const handleUpdateTransaction = async (id: string, data: any) => {
-    try {
-      await updateTransaction.mutateAsync({ id, data });
-      setIsEditModalOpen(false);
-      setSelectedTransaction(null);
-    } catch (error) {
-      console.error('Failed to update transaction:', error);
-    }
-  };
-
-  const handleDeleteTransaction = async (id: string) => {
-    try {
-      await deleteTransaction.mutateAsync(id);
-      setIsDeleteModalOpen(false);
-      setSelectedTransaction(null);
-    } catch (error) {
-      console.error('Failed to delete transaction:', error);
-    }
-  };
-
   const getTransactionIcon = (type: string) => {
-    switch (type) {
-      case 'INCOME':
-        return <TrendingUp className="w-4 h-4 text-green-600" />;
-      case 'EXPENSE':
-        return <TrendingDown className="w-4 h-4 text-red-600" />;
-      case 'TRANSFER':
-        return <ArrowRightLeft className="w-4 h-4 text-blue-600" />;
-      default:
-        return <ArrowUpDown className="w-4 h-4 text-gray-600" />;
-    }
+    const iconMap: Record<string, React.ElementType> = {
+      'income': TrendingUp,
+      'expense': TrendingDown,
+      'transfer': ArrowLeftRight,
+    };
+    return iconMap[type] || CreditCard;
   };
 
-  const getStatusBadgeColor = (status: string) => {
-    switch (status) {
-      case 'COMPLETED':
-        return 'success';
-      case 'PENDING':
-        return 'warning';
-      case 'CANCELLED':
-        return 'destructive';
-      default:
-        return 'default';
-    }
-  };
-
-  const getTypeBadgeColor = (type: string) => {
-    switch (type) {
-      case 'INCOME':
-        return 'success';
-      case 'EXPENSE':
-        return 'destructive';
-      case 'TRANSFER':
-        return 'info';
-      default:
-        return 'default';
-    }
+  const getTransactionColor = (type: string) => {
+    const colorMap: Record<string, string> = {
+      'income': 'from-green-500 to-emerald-600',
+      'expense': 'from-red-500 to-rose-600',
+      'transfer': 'from-blue-500 to-indigo-600',
+    };
+    return colorMap[type] || 'from-gray-500 to-gray-600';
   };
 
   const getAccountName = (accountId: string) => {
-    const account = accounts.find(acc => acc.id === accountId);
+    const account = accounts.find((acc: Account) => acc.id === accountId);
     return account?.name || 'Unknown Account';
   };
 
   const getCategoryName = (categoryId?: string) => {
     if (!categoryId) return 'Uncategorized';
-    const category = categories.find(cat => cat.id === categoryId);
-    return category?.name || 'Unknown Category';
+    const category = categories.find((cat: Category) => cat.id === categoryId);
+    return category?.name || 'Unknown';
   };
 
-  const getFilteredTransactions = () => {
-    return transactions.filter(transaction => {
-      if (transaction.deleted_at) return false;
-      
-      const matchesSearch = searchTerm === '' || 
-        transaction.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        transaction.merchant?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        getCategoryName(transaction.category_id).toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesType = filterType === 'all' || transaction.transaction_type === filterType;
-      const matchesStatus = filterStatus === 'all' || transaction.status === filterStatus;
-      const matchesAccount = filterAccount === 'all' || transaction.account_id === filterAccount;
-      
-      return matchesSearch && matchesType && matchesStatus && matchesAccount;
-    });
-  };
-
-  const filteredTransactions = getFilteredTransactions();
-
-  // Calculate summary stats
-  const totalIncome = filteredTransactions
-    .filter(t => t.transaction_type === 'income' && t.status === 'COMPLETED')
-    .reduce((sum, t) => sum + t.amount, 0);
+  const totalIncome = transactions
+    .filter(t => t.transaction_type === 'income')
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
   
-  const totalExpenses = filteredTransactions
-    .filter(t => t.transaction_type === 'expense' && t.status === 'COMPLETED')
-    .reduce((sum, t) => sum + t.amount, 0);
+  const totalExpenses = transactions
+    .filter(t => t.transaction_type === 'expense')
+    .reduce((sum, t) => sum + (Number(t.amount) || 0), 0);
 
-  const netAmount = totalIncome - totalExpenses;
-  const pendingCount = filteredTransactions.filter(t => t.status === 'PENDING').length;
+  const netBalance = totalIncome - totalExpenses;
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">Transactions</h1>
-          <p className="text-gray-600 mt-1">Track and manage your financial transactions</p>
-        </div>
-        <div className="flex space-x-3">
-          <Button variant="outline" size="sm">
-            <Download className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-          <Button 
-            onClick={() => setIsCreateModalOpen(true)}
-            size="sm"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Transaction
-          </Button>
-        </div>
-      </div>
-
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <TrendingUp className="w-5 h-5 text-green-600" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Income</p>
-                <p className="text-2xl font-bold text-green-600">
-                  {formatCurrency(totalIncome)}
-                </p>
-              </div>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-950">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white tracking-tight">
+                Transactions
+              </h1>
+              <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                Track all your financial transactions
+              </p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <TrendingDown className="w-5 h-5 text-red-600" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total Expenses</p>
-                <p className="text-2xl font-bold text-red-600">
-                  {formatCurrency(totalExpenses)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <ArrowUpDown className="w-5 h-5 text-blue-600" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">Net Amount</p>
-                <p className={`text-2xl font-bold ${netAmount >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                  {formatCurrency(netAmount)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center space-x-2">
-              <Filter className="w-5 h-5 text-orange-600" />
-              <div>
-                <p className="text-sm font-medium text-gray-600">Pending</p>
-                <p className="text-2xl font-bold text-orange-600">
-                  {pendingCount}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Filters and Search */}
-      <Card>
-        <CardContent className="p-4">
-          <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
-            <div className="md:col-span-2">
-              <div className="relative">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-                <Input
-                  placeholder="Search transactions, merchants, categories..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
-                />
-              </div>
-            </div>
-            
-            <Select
-              placeholder="All Types"
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              options={[
-                { value: 'all', label: 'All Types' },
-                ...TRANSACTION_TYPES
-              ]}
-            />
-            
-            <Select
-              placeholder="All Status"
-              value={filterStatus}
-              onChange={(e) => setFilterStatus(e.target.value)}
-              options={[
-                { value: 'all', label: 'All Status' },
-                ...TRANSACTION_STATUS
-              ]}
-            />
-            
-            <Select
-              placeholder="All Accounts"
-              value={filterAccount}
-              onChange={(e) => setFilterAccount(e.target.value)}
-              options={[
-                { value: 'all', label: 'All Accounts' },
-                ...accounts.map(account => ({
-                  value: account.id,
-                  label: account.name
-                }))
-              ]}
-            />
+            <Button 
+              onClick={() => setIsCreateModalOpen(true)}
+              size="default"
+              className="shadow-sm"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Transaction
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Transactions Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex justify-between items-center">
-            <span>Transactions ({filteredTransactions.length})</span>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Description</TableHead>
-                <TableHead>Category</TableHead>
-                <TableHead>Account</TableHead>
-                <TableHead>Type</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredTransactions.map((transaction) => (
-                <TableRow key={transaction.id}>
-                  <TableCell className="font-medium">
-                    {new Date(transaction.transaction_date).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center space-x-2">
-                      {getTransactionIcon(transaction.transaction_type)}
-                      <div>
-                        <p className="font-medium">{transaction.description}</p>
-                        {transaction.merchant && (
-                          <p className="text-sm text-gray-500">{transaction.merchant}</p>
-                        )}
+        {/* Summary Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Total Transactions
+                  </p>
+                  <p className="mt-2 text-3xl font-bold text-gray-900 dark:text-white">
+                    {transactions.length}
+                  </p>
+                </div>
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-blue-100 dark:bg-blue-950/50 rounded-xl flex items-center justify-center">
+                    <BarChart3 className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Total Income
+                  </p>
+                  <p className="mt-2 text-3xl font-bold text-green-600 dark:text-green-400">
+                    {formatCurrency(totalIncome)}
+                  </p>
+                </div>
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-green-100 dark:bg-green-950/50 rounded-xl flex items-center justify-center">
+                    <TrendingUp className="w-6 h-6 text-green-600 dark:text-green-400" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Total Expenses
+                  </p>
+                  <p className="mt-2 text-3xl font-bold text-red-600 dark:text-red-400">
+                    {formatCurrency(totalExpenses)}
+                  </p>
+                </div>
+                <div className="flex-shrink-0">
+                  <div className="w-12 h-12 bg-red-100 dark:bg-red-950/50 rounded-xl flex items-center justify-center">
+                    <TrendingDown className="w-6 h-6 text-red-600 dark:text-red-400" />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border-0 shadow-sm hover:shadow-md transition-all">
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-gray-600 dark:text-gray-400">
+                    Net Balance
+                  </p>
+                  <p className={`mt-2 text-3xl font-bold ${
+                    netBalance >= 0 
+                      ? 'text-green-600 dark:text-green-400' 
+                      : 'text-red-600 dark:text-red-400'
+                  }`}>
+                    {formatCurrency(netBalance)}
+                  </p>
+                </div>
+                <div className="flex-shrink-0">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+                    netBalance >= 0
+                      ? 'bg-green-100 dark:bg-green-950/50'
+                      : 'bg-red-100 dark:bg-red-950/50'
+                  }`}>
+                    <CreditCard className={`w-6 h-6 ${
+                      netBalance >= 0
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-red-600 dark:text-red-400'
+                    }`} />
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Transactions List */}
+        {transactions.length === 0 ? (
+          <EmptyState
+            icon={CreditCard}
+            title="No transactions yet"
+            description="Get started by adding your first transaction"
+            action={{ label: "Add Transaction", onClick: () => setIsCreateModalOpen(true) }}
+          />
+        ) : (
+          <div className="space-y-3">
+            {transactions.map((transaction) => {
+              const Icon = getTransactionIcon(transaction.transaction_type);
+              const gradientClass = getTransactionColor(transaction.transaction_type);
+              
+              return (
+                <Card 
+                  key={transaction.id}
+                  className="border-0 shadow-sm hover:shadow-md transition-all overflow-hidden"
+                >
+                  <CardContent className="p-0">
+                    <div className="flex items-center p-6">
+                      {/* Icon */}
+                      <div className="flex-shrink-0">
+                        <div className={`w-12 h-12 bg-gradient-to-br ${gradientClass} rounded-xl flex items-center justify-center`}>
+                          <Icon className="w-6 h-6 text-white" />
+                        </div>
+                      </div>
+
+                      {/* Transaction Info */}
+                      <div className="ml-4 flex-1 min-w-0">
+                        <div className="flex items-center gap-3">
+                          <h3 className="text-base font-semibold text-gray-900 dark:text-white truncate">
+                            {transaction.description}
+                          </h3>
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
+                            transaction.transaction_type === 'income'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-950/30 dark:text-green-400'
+                              : transaction.transaction_type === 'expense'
+                              ? 'bg-red-100 text-red-700 dark:bg-red-950/30 dark:text-red-400'
+                              : 'bg-blue-100 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400'
+                          }`}>
+                            {transaction.transaction_type.charAt(0).toUpperCase() + transaction.transaction_type.slice(1)}
+                          </span>
+                        </div>
+                        <div className="mt-1 flex items-center gap-3 text-sm">
+                          <span className="text-gray-600 dark:text-gray-400">
+                            {getAccountName(transaction.account_id)}
+                          </span>
+                          <span className="text-gray-400 dark:text-gray-600">•</span>
+                          <span className="text-gray-500">
+                            {getCategoryName(transaction.category_id)}
+                          </span>
+                          {transaction.merchant && (
+                            <>
+                              <span className="text-gray-400 dark:text-gray-600">•</span>
+                              <span className="text-gray-500">{transaction.merchant}</span>
+                            </>
+                          )}
+                        </div>
+                        <p className="mt-1 text-xs text-gray-500">
+                          {format(new Date(transaction.date), 'MMM dd, yyyy')}
+                        </p>
+                      </div>
+
+                      {/* Amount */}
+                      <div className="ml-6 flex-shrink-0 text-right">
+                        <p className={`text-xl font-bold ${
+                          transaction.transaction_type === 'income'
+                            ? 'text-green-600 dark:text-green-400'
+                            : transaction.transaction_type === 'expense'
+                            ? 'text-red-600 dark:text-red-400'
+                            : 'text-blue-600 dark:text-blue-400'
+                        }`}>
+                          {transaction.transaction_type === 'expense' ? '-' : '+'}
+                          {formatCurrency(Number(transaction.amount) || 0)}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {transaction.currency}
+                        </p>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="ml-6 flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedTransaction(transaction);
+                            setIsEditModalOpen(true);
+                          }}
+                          className="hover:bg-gray-100 dark:hover:bg-gray-800"
+                        >
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedTransaction(transaction);
+                            setIsDeleteModalOpen(true);
+                          }}
+                          className="hover:bg-red-50 dark:hover:bg-red-950/30 hover:text-red-600 dark:hover:text-red-400"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
                       </div>
                     </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-xs">
-                      {getCategoryName(transaction.category_id)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>{getAccountName(transaction.account_id)}</TableCell>
-                  <TableCell>
-                    <Badge variant={getTypeBadgeColor(transaction.transaction_type)} className="text-xs">
-                      {transaction.transaction_type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusBadgeColor(transaction.status)} className="text-xs">
-                      {transaction.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <span className={
-                      transaction.transaction_type === 'income' ? 'text-green-600 font-semibold' :
-                      transaction.transaction_type === 'expense' ? 'text-red-600 font-semibold' :
-                      'text-blue-600 font-semibold'
-                    }>
-                      {transaction.transaction_type === 'income' ? '+' : transaction.transaction_type === 'expense' ? '-' : ''}
-                      {formatCurrency(transaction.amount)}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end space-x-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => {
-                          setSelectedTransaction(transaction);
-                          setIsEditModalOpen(true);
-                        }}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => {
-                          setSelectedTransaction(transaction);
-                          setIsDeleteModalOpen(true);
-                        }}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
-      {/* Create Transaction Modal */}
+      {/* Create Modal */}
       <Modal 
         isOpen={isCreateModalOpen} 
         onClose={() => setIsCreateModalOpen(false)}
-        size="md"
+        size="lg"
       >
         <ModalHeader>
-          <h2 className="text-lg font-semibold dark:text-gray-100">Add New Transaction</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            Create New Transaction
+          </h2>
         </ModalHeader>
         <ModalBody>
           <TransactionForm
@@ -422,169 +352,91 @@ export default function TransactionsPage() {
         </ModalBody>
       </Modal>
 
-      {/* Edit Transaction Modal */}
+      {/* Edit Modal */}
       <Modal 
         isOpen={isEditModalOpen} 
         onClose={() => setIsEditModalOpen(false)}
-        size="md"
+        size="lg"
       >
         <ModalHeader>
-          <h2 className="text-lg font-semibold">Edit Transaction</h2>
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+            Edit Transaction
+          </h2>
         </ModalHeader>
         <ModalBody>
           {selectedTransaction && (
-            <Form onSubmit={(e) => e.preventDefault()}>
-              <FormSection>
-                <div className="space-y-4">
-                  <Input
-                    label="Description"
-                    defaultValue={selectedTransaction.description}
-                    placeholder="e.g., Grocery shopping"
-                    required
-                  />
-                  <div className="grid grid-cols-2 gap-4">
-                    <Input
-                      type="number"
-                      label="Amount"
-                      defaultValue={selectedTransaction.amount}
-                      step="0.01"
-                      required
-                    />
-                    <Input
-                      type="date"
-                      label="Date"
-                      defaultValue={selectedTransaction.transaction_date}
-                      required
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <Select
-                      label="Type"
-                      defaultValue={selectedTransaction.transaction_type}
-                      options={TRANSACTION_TYPES}
-                      required
-                    />
-                    <Select
-                      label="Status"
-                      defaultValue={selectedTransaction.status}
-                      options={TRANSACTION_STATUS}
-                      required
-                    />
-                  </div>
-                  <Select
-                    label="Account"
-                    defaultValue={selectedTransaction.account_id}
-                    options={accounts.map(account => ({
-                      value: account.id,
-                      label: account.name
-                    }))}
-                    required
-                  />
-                  <Select
-                    label="Category"
-                    defaultValue={selectedTransaction.category_id || ''}
-                    options={[
-                      { value: '', label: 'Uncategorized' },
-                      ...categories.map(category => ({
-                        value: category.id,
-                        label: category.name
-                      }))
-                    ]}
-                  />
-                  <Input
-                    label="Merchant/Payee"
-                    defaultValue={selectedTransaction.merchant || ''}
-                    placeholder="e.g., Whole Foods"
-                  />
-                  <Input
-                    label="Location"
-                    defaultValue={selectedTransaction.location || ''}
-                    placeholder="e.g., New York, NY"
-                  />
-                  <Input
-                    label="Tags"
-                    defaultValue={selectedTransaction.tags?.join(', ') || ''}
-                    placeholder="e.g., groceries, food (comma-separated)"
-                  />
-                </div>
-              </FormSection>
-            </Form>
+            <TransactionForm
+              defaultValues={selectedTransaction}
+              accounts={accounts}
+              categories={categories}
+              onSubmit={handleUpdateTransaction}
+              onCancel={() => setIsEditModalOpen(false)}
+              isLoading={updateTransaction.isPending}
+              mode="edit"
+            />
           )}
         </ModalBody>
-        <ModalFooter>
-          <FormActions>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsEditModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="default"
-              loading={isLoading}
-              onClick={() => selectedTransaction && handleUpdateTransaction(selectedTransaction.id, {
-                description: selectedTransaction.description,
-                amount: selectedTransaction.amount,
-                transaction_date: selectedTransaction.transaction_date,
-                transaction_type: selectedTransaction.transaction_type,
-                status: selectedTransaction.status
-              })}
-            >
-              Update Transaction
-            </Button>
-          </FormActions>
-        </ModalFooter>
       </Modal>
 
-      {/* Delete Transaction Modal */}
+      {/* Delete Modal */}
       <Modal 
         isOpen={isDeleteModalOpen} 
         onClose={() => setIsDeleteModalOpen(false)}
         size="sm"
       >
         <ModalHeader>
-          <h2 className="text-lg font-semibold text-red-600">Delete Transaction</h2>
+          <h2 className="text-lg font-semibold text-red-600 dark:text-red-400">
+            Delete Transaction
+          </h2>
         </ModalHeader>
         <ModalBody>
           {selectedTransaction && (
             <div className="space-y-4">
-              <p className="text-gray-700">
+              <p className="text-gray-700 dark:text-gray-300">
                 Are you sure you want to delete this transaction?
               </p>
-              <div className="bg-gray-50 border border-gray-200 rounded-md p-3">
-                <p className="font-medium">{selectedTransaction.description}</p>
-                <p className="text-sm text-gray-600">
-                  {formatCurrency(selectedTransaction.amount)} • {new Date(selectedTransaction.transaction_date).toLocaleDateString()}
-                </p>
-                {selectedTransaction.merchant && (
-                  <p className="text-sm text-gray-600">{selectedTransaction.merchant}</p>
-                )}
+              
+              <div className="p-4 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700">
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Description:</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {selectedTransaction.description}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Amount:</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {formatCurrency(Number(selectedTransaction.amount) || 0)}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600 dark:text-gray-400">Type:</span>
+                    <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                      {selectedTransaction.transaction_type.charAt(0).toUpperCase() + selectedTransaction.transaction_type.slice(1)}
+                    </span>
+                  </div>
+                </div>
               </div>
-              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-                <p className="text-sm text-yellow-800">
-                  <strong>Warning:</strong> This action cannot be undone. The transaction will be marked as deleted.
-                </p>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setIsDeleteModalOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant="destructive"
+                  loading={deleteTransaction.isPending}
+                  onClick={handleDeleteTransaction}
+                >
+                  Delete Transaction
+                </Button>
               </div>
             </div>
           )}
         </ModalBody>
-        <ModalFooter>
-          <FormActions>
-            <Button 
-              variant="outline" 
-              onClick={() => setIsDeleteModalOpen(false)}
-            >
-              Cancel
-            </Button>
-            <Button 
-              variant="destructive"
-              loading={isLoading}
-              onClick={() => selectedTransaction && handleDeleteTransaction(selectedTransaction.id)}
-            >
-              Delete Transaction
-            </Button>
-          </FormActions>
-        </ModalFooter>
       </Modal>
     </div>
   );

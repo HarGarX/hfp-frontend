@@ -78,11 +78,12 @@ export interface Transaction extends BaseEntity {
   amount: number
   currency: string
   description: string
-  transaction_date: string
+  date: string
   transaction_type: 'income' | 'expense' | 'transfer'
   status: 'PENDING' | 'COMPLETED' | 'CANCELLED'
   merchant?: string
-  location?: string
+  notes?: string
+  transfer_account_id?: string
   tags?: string[]
 }
 
@@ -219,10 +220,11 @@ export interface CreateTransactionRequest {
   amount: number
   currency: string
   description: string
-  transaction_date: string
+  date: string
   transaction_type: Transaction['transaction_type']
   merchant?: string
-  location?: string
+  notes?: string
+  transfer_account_id?: string
   tags?: string[]
 }
 

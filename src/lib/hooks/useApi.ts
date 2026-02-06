@@ -140,7 +140,7 @@ export function useDeleteAccount() {
 export function useTransactions(params?: ListParams) {
   return useQuery({
     queryKey: queryKeys.transactions(params),
-    queryFn: () => api.transactions.list(params).then(res => res.data),
+    queryFn: () => api.transactions.list(params).then(res => res.data.transactions || []),
   })
 }
 
@@ -205,7 +205,12 @@ export function useDeleteTransaction() {
 export function useCategories() {
   return useQuery({
     queryKey: queryKeys.categories,
-    queryFn: () => api.categories.list().then(res => res.data),
+    queryFn: async () => {
+      const response = await api.categories.list();
+      // Backend returns paginated response: { categories: [], meta: {} }
+      const paginatedData = response.data as any;
+      return paginatedData?.categories || [];
+    },
   })
 }
 

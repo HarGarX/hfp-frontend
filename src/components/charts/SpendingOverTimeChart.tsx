@@ -29,7 +29,7 @@ export function SpendingOverTimeChart({ transactions, dateRange }: SpendingOverT
       
       // Calculate income and expenses for this day
       const dayTransactions = transactions.filter(t => {
-        const txDate = t.transaction_date ? format(parseISO(t.transaction_date), 'yyyy-MM-dd') : '';
+        const txDate = t.date ? format(parseISO(t.date), 'yyyy-MM-dd') : '';
         return txDate === dayStr;
       });
 

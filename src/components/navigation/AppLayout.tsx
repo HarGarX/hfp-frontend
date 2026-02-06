@@ -15,7 +15,7 @@ export function AppLayout({ children, breadcrumbs }: AppLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 dark:bg-gray-950">
       {/* Sidebar */}
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
@@ -28,7 +28,7 @@ export function AppLayout({ children, breadcrumbs }: AppLayoutProps) {
         <Breadcrumbs items={breadcrumbs} />
         
         {/* Page Content */}
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto bg-gray-50 dark:bg-gray-950">
           {children}
         </main>
       </div>
